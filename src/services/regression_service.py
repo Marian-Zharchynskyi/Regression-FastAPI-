@@ -46,41 +46,36 @@ class RegressionService:
                 f_statistic=result["f_statistic"],
                 f_p_value=result["f_p_value"],
                 n_observations=result["n_observations"],
-                formula=f"{dependent_variable} ~ {' + '.join(independent_variables)}",  # Simple formula format
+                formula=f"{dependent_variable} ~ {' + '.join(independent_variables)}", 
             )
 
             saved_result = await self.regression_result_repository.create_regression_result(regression_result)
             await self.regression_result_repository.session.refresh(saved_result)
 
-            return RegressionResultDto.from_db_model(saved_result)  # Use from_db_model instead of model_validate
+            return RegressionResultDto.from_db_model(saved_result)  
         except Exception as e:
             raise ValueError("Failed to perform regression analysis") from e
 
     def perform_regression_analysis(
         self, dependent_variable: str, independent_variables: List[str], df: pd.DataFrame
     ) -> Dict:
-        # Prepare data
         x = df[independent_variables]
         y = df[dependent_variable]
 
-        # Add constant (intercept) to independent value
         x = sm.add_constant(x)
 
-        # Fit model
         model = sm.OLS(y, x).fit()
 
-        # Extract results
         coefficients = model.params.to_dict()
         std_errors = model.bse.to_dict()
         t_statistics = model.tvalues.to_dict()
         p_values = model.pvalues.to_dict()
-        r_squared = float(np.clip(model.rsquared, 0, 1))  # Ensure R² is between 0 and 1
-        adj_r_squared = float(np.clip(model.rsquared_adj, 0, 1))  # Ensure adjusted R² is between 0 and 1
-        f_statistic = float(max(0, model.fvalue))  # Ensure F-statistic is positive
-        f_p_value = float(np.clip(model.f_pvalue, 0, 1))  # Ensure p-value is between 0 and 1
-        n_observations = int(max(1, len(y)))  # Ensure n_observations is positive
+        r_squared = float(np.clip(model.rsquared, 0, 1))  
+        adj_r_squared = float(np.clip(model.rsquared_adj, 0, 1))  
+        f_statistic = float(max(0, model.fvalue))  
+        f_p_value = float(np.clip(model.f_pvalue, 0, 1))
+        n_observations = int(max(1, len(y)))  
 
-        # Calculate confidence intervals
         conf_int = model.conf_int()
         confidence_intervals = {
             col: {"lower": float(conf_int.loc[col][0]), "upper": float(conf_int.loc[col][1])}
@@ -106,16 +101,12 @@ class RegressionService:
         x = df[independent_variables]
         y = df[dependent_variable]
 
-        # Add constant (intercept) to independent value
         x = sm.add_constant(x)
 
-        # Fit model
         model = sm.OLS(y, x).fit()
 
-        # Extract results
         coefficients = model.params.to_dict()
 
-        # Generate regression formula
         formula = f"{dependent_variable} = {coefficients['const']}"
         for var, coef in coefficients.items():
             if var != "const":

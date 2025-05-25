@@ -30,13 +30,11 @@ class AnalysisRequestService:
         self.csv_service = csv_service
 
     async def create_analysis_request(self, csv_file: UploadFile, config: dict) -> RegressionResultDto:
-        # Validate config
         try:
             config_model = AnalysisRequestConfig(**config)
         except ValueError as e:
             raise HTTPException(status_code=422, detail=f"Invalid config: {str(e)}")
 
-        # Read and validate CSV file
         try:
             self.csv_service.set_file(csv_file.file)
             df = self.csv_service.read_csv()
@@ -44,13 +42,12 @@ class AnalysisRequestService:
         except ValueError as e:
             raise HTTPException(status_code=422, detail=str(e))
 
-        # Create analysis request
         request_id = uuid.uuid4()
         try:
             analysis_request = AnalysisRequest(
                 id=request_id,
                 created_at=datetime.now(),
-                csv_filename=csv_file.filename,  # Changed from csv_name
+                csv_filename=csv_file.filename,  
                 dependent_variable=config_model.dependent_variable,
                 independent_variables=config_model.independent_variables,
                 formula=self.regression_service.generate_regression_formula(
@@ -63,7 +60,6 @@ class AnalysisRequestService:
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
-        # Perform regression analysis
         regression_result = await self.regression_service.create_regression_result(
             request_id=request_id,
             dependent_variable=config_model.dependent_variable,

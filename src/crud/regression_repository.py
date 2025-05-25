@@ -19,7 +19,7 @@ class RegressionResultRepository:
 
     async def create_regression_result(self, regression_result: RegressionResult) -> RegressionResult:
         self.session.add(regression_result)
-        await self.session.flush()  # Add this line to ensure all fields are populated
+        await self.session.flush()  
 
         return regression_result
 

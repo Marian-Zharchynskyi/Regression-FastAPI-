@@ -20,7 +20,7 @@ class ModelQualityDto(BaseModel):
 
 
 class RegressionResultDto(BaseModel):
-    analysis_id: str  # Changed from UUID to match desired format
+    analysis_id: str  
     model_summary: ModelSummaryDto
     model_quality: ModelQualityDto
     formula: str
