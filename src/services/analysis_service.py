@@ -1,11 +1,10 @@
-﻿import uuid
+import uuid
 from datetime import datetime
-from typing import Annotated, List, Optional
-from uuid import UUID
+from typing import Annotated, List
 from fastapi import Depends, UploadFile, HTTPException
 from sqlalchemy.exc import IntegrityError
 
-from services.csv_service import CsvService
+from services.file_service import CsvService
 from services.regression_service import RegressionServiceDependency
 
 from crud.analysis_repository import AnalysisRequestRepositoryDependency
@@ -38,17 +37,12 @@ class AnalysisRequestService:
 
         try:
             self.csv_service.set_file(csv_file.file)
-            df = self.csv_service.read_csv()
+            df = self.csv_service.read_file()
             self.csv_service.validate_csv_data(df, config_model)
         except ValueError as e:
             raise HTTPException(status_code=422, detail=str(e))
 
         request_id = uuid.uuid4()
-        print(
-            self.regression_service.generate_regression_formula(
-                config_model.dependent_variable, config_model.independent_variables, df
-            )
-        )
         try:
             analysis_request = AnalysisRequest(
                 id=request_id,
@@ -67,7 +61,6 @@ class AnalysisRequestService:
             raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
         try:
-            # Create regression result
             regression_result = await self.regression_service.create_regression_result(
                 request_id=request_id,
                 dependent_variable=config_model.dependent_variable,
@@ -75,12 +68,10 @@ class AnalysisRequestService:
                 df=df,
             )
 
-            # Explicitly commit the regression result
             await self.regression_result_repository.session.commit()
             
-            return RegressionResultDto.from_db_model(regression_result)
+            return regression_result
         except Exception as e:
-            # Rollback in case of error
             await self.regression_result_repository.session.rollback()
             raise HTTPException(status_code=500, detail=f"Failed to save regression result: {str(e)}")
 
@@ -90,18 +81,15 @@ class AnalysisRequestService:
         for analysis in analysis_requests:
             regression_result = await self.regression_result_repository.get_regression_result_by_request_id(analysis.id)
             if regression_result:
-                results.append(RegressionResultDto.from_db_model(regression_result))
+                try:
+                    if hasattr(regression_result, 'model_summary'):
+                        results.append(regression_result)
+                    else:
+                        results.append(RegressionResultDto.from_db_model(regression_result))
+                except Exception as e:
+                    print(f"Error processing analysis {analysis.id}: {str(e)}")
+                    continue
         return results
-
-    async def get_analysis_request_by_id(self, analysis_id: UUID) -> Optional[RegressionResultDto]:
-        analysis = await self.analysis_request_repository.get_analysis_request_by_id(analysis_id)
-        if not analysis:
-            return None
-
-        regression_result = await self.regression_result_repository.get_regression_result_by_request_id(analysis.id)
-        if regression_result:
-            return RegressionResultDto.from_db_model(regression_result)
-        return None
 
 
 AnalysisRequestServiceDependency = Annotated[AnalysisRequestService, Depends(AnalysisRequestService)]

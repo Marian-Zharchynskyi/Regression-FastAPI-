@@ -20,7 +20,7 @@ class ModelQualityDto(BaseModel):
 
 
 class RegressionResultDto(BaseModel):
-    analysis_id: str  
+    request_id: str  
     model_summary: ModelSummaryDto
     model_quality: ModelQualityDto
     formula: str
@@ -28,7 +28,7 @@ class RegressionResultDto(BaseModel):
     @classmethod
     def from_db_model(cls, db_model):
         return cls(
-            analysis_id=str(db_model.request_id),
+            request_id=str(db_model.request_id),
             model_summary=ModelSummaryDto(
                 coefficients=db_model.coefficients_json,
                 std_errors=db_model.std_errors_json,

@@ -1,8 +1,7 @@
 import json
-from uuid import UUID
 from typing import List
 
-from fastapi import APIRouter, UploadFile, Form, HTTPException
+from fastapi import APIRouter, UploadFile, Form
 
 from services.analysis_service import AnalysisRequestServiceDependency
 from schemas.regression_result import RegressionResultDto
@@ -26,14 +25,3 @@ async def get_all_analyses(
 ):
     analyses = await analysis_request_service.get_all_analysis_requests()
     return analyses
-
-
-@analysis_request_router.get("/{analysis_id}", response_model=RegressionResultDto)
-async def get_analysis_by_id(
-    analysis_id: UUID,
-    analysis_request_service: AnalysisRequestServiceDependency,
-):
-    analysis = await analysis_request_service.get_analysis_request_by_id(analysis_id)
-    if not analysis:
-        raise HTTPException(status_code=404, detail="Analysis not found")
-    return analysis

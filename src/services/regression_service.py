@@ -8,14 +8,10 @@ import numpy as np
 from fastapi import Depends
 from sqlalchemy.orm import class_mapper
 
-from services.csv_service import CsvService
+from services.file_service import CsvService
 from schemas.regression_result import RegressionResultDto
 from models import RegressionResult
 from crud.regression_repository import RegressionResultRepositoryDependency
-
-
-def model_to_dict(obj):
-    return {column.key: getattr(obj, column.key) for column in class_mapper(obj.__class__).columns}
 
 
 class RegressionService:
@@ -111,5 +107,11 @@ class RegressionService:
                 formula += f" + {coef} * {var}"
         return formula
 
+    async def get_all_regression_results(self) -> List[RegressionResultDto]:
+        results = await self.regression_result_repository.get_regression_results()
+        return [RegressionResultDto.from_db_model(result) for result in results]
+
+    def model_to_dict(obj):
+        return {column.key: getattr(obj, column.key) for column in class_mapper(obj.__class__).columns}
 
 RegressionServiceDependency = Annotated[RegressionService, Depends(RegressionService)]

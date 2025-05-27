@@ -1,5 +1,4 @@
 ﻿from typing import Annotated
-from uuid import UUID 
 
 from fastapi import Depends
 from sqlalchemy import select
@@ -17,12 +16,6 @@ class AnalysisRequestRepository:
         result = await self.session.scalars(query)
 
         return result.all()
-
-    async def get_analysis_request_by_id(self, analysis_request_id: UUID): 
-        query = select(AnalysisRequest).where(AnalysisRequest.id == analysis_request_id)
-        result = await self.session.scalars(query)
-
-        return result.one_or_none()
 
     async def create_analysis_request(self, analysis_request: AnalysisRequest):
         self.session.add(analysis_request)
