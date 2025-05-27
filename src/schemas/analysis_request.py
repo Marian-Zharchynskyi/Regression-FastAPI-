@@ -8,7 +8,7 @@ from pydantic_settings import SettingsConfigDict
 class AnalysisRequestDto(BaseModel):
     id: UUID
     created_at: datetime
-    csv_name: str
+    csv_filename: str  # Changed from csv_name
     dependent_variable: str
     independent_variables: dict
     formula: str

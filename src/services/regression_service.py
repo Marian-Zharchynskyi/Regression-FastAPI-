@@ -15,7 +15,6 @@ from crud.regression_repository import RegressionResultRepositoryDependency
 
 
 def model_to_dict(obj):
-    """Convert SQLAlchemy model to dictionary."""
     return {column.key: getattr(obj, column.key) for column in class_mapper(obj.__class__).columns}
 
 
@@ -50,7 +49,6 @@ class RegressionService:
             )
 
             saved_result = await self.regression_result_repository.create_regression_result(regression_result)
-            await self.regression_result_repository.session.refresh(saved_result)
 
             return RegressionResultDto.from_db_model(saved_result)  
         except Exception as e:

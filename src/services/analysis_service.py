@@ -1,6 +1,7 @@
 ﻿import uuid
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, List, Optional
+from uuid import UUID
 from fastapi import Depends, UploadFile, HTTPException
 from sqlalchemy.exc import IntegrityError
 
@@ -43,6 +44,11 @@ class AnalysisRequestService:
             raise HTTPException(status_code=422, detail=str(e))
 
         request_id = uuid.uuid4()
+        print(
+            self.regression_service.generate_regression_formula(
+                config_model.dependent_variable, config_model.independent_variables, df
+            )
+        )
         try:
             analysis_request = AnalysisRequest(
                 id=request_id,
@@ -60,14 +66,42 @@ class AnalysisRequestService:
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
-        regression_result = await self.regression_service.create_regression_result(
-            request_id=request_id,
-            dependent_variable=config_model.dependent_variable,
-            independent_variables=config_model.independent_variables,
-            df=df,
-        )
+        try:
+            # Create regression result
+            regression_result = await self.regression_service.create_regression_result(
+                request_id=request_id,
+                dependent_variable=config_model.dependent_variable,
+                independent_variables=config_model.independent_variables,
+                df=df,
+            )
 
-        return RegressionResultDto.model_validate(regression_result)
+            # Explicitly commit the regression result
+            await self.regression_result_repository.session.commit()
+            
+            return RegressionResultDto.from_db_model(regression_result)
+        except Exception as e:
+            # Rollback in case of error
+            await self.regression_result_repository.session.rollback()
+            raise HTTPException(status_code=500, detail=f"Failed to save regression result: {str(e)}")
+
+    async def get_all_analysis_requests(self) -> List[RegressionResultDto]:
+        analysis_requests = await self.analysis_request_repository.get_analysis_requests()
+        results = []
+        for analysis in analysis_requests:
+            regression_result = await self.regression_result_repository.get_regression_result_by_request_id(analysis.id)
+            if regression_result:
+                results.append(RegressionResultDto.from_db_model(regression_result))
+        return results
+
+    async def get_analysis_request_by_id(self, analysis_id: UUID) -> Optional[RegressionResultDto]:
+        analysis = await self.analysis_request_repository.get_analysis_request_by_id(analysis_id)
+        if not analysis:
+            return None
+
+        regression_result = await self.regression_result_repository.get_regression_result_by_request_id(analysis.id)
+        if regression_result:
+            return RegressionResultDto.from_db_model(regression_result)
+        return None
 
 
 AnalysisRequestServiceDependency = Annotated[AnalysisRequestService, Depends(AnalysisRequestService)]
